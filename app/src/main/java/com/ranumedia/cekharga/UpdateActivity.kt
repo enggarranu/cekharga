@@ -101,9 +101,15 @@ class UpdateActivity : AppCompatActivity() {
 
         var barcodeProduct: String = item_id.text.toString()
         var productName: String = ProductName.text.toString()
-        var price_v: Int = if (price.text.toString() != "") price.text.toString().toInt() else 0
         var supermarket_id: Int = 0
+        var price_v: Int = 0
+        var price_s: String = price.text.toString()
+        if (price_s.length == 0 ) {
+            price_v = 0
+        } else {
 
+            price_v = price_s.replace(",","").toInt()
+        }
 
         if (connection == null || connection?.isClosed == true) {
             Toast.makeText(this, "Connection closed", Toast.LENGTH_LONG).show()
@@ -145,7 +151,7 @@ class UpdateActivity : AppCompatActivity() {
 
                 item_id.setText("")
                 ProductName.setText("")
-                price.setText("")
+                price.setText("0")
                 finish()
 
             } catch (e: SQLException) {
@@ -161,15 +167,5 @@ class UpdateActivity : AppCompatActivity() {
                 Log.e(this::class.toString(), e.message, e)
             }
         }
-    }
-
-    fun afterTextChanged(view: Editable) {
-        var s: String? = null
-        try {
-            // The comma in the format specifier does the trick
-            s = String.format("%,d", view.toString().toLong())
-        } catch (e: NumberFormatException) {
-        }
-        // Set s back to the view after temporarily removing the text change listener
     }
 }

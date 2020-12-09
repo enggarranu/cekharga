@@ -1,22 +1,29 @@
 package com.ranumedia.cekharga
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import android.view.View
-import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import android.widget.TextView.OnEditorActionListener
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_inquiry.*
+import kotlinx.android.synthetic.main.activity_inquiry.item_id
+import kotlinx.android.synthetic.main.activity_update.*
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
+import java.text.DecimalFormat
+import java.text.NumberFormat
+import java.util.*
 import kotlin.concurrent.thread
+
 
 class InquiryActivity : AppCompatActivity() {
 
@@ -45,6 +52,13 @@ class InquiryActivity : AppCompatActivity() {
 
         val inputBarcode: EditText = findViewById(R.id.item_id)
         inputBarcode.requestFocus()
+
+        inputBarcode.setOnEditorActionListener(OnEditorActionListener { v, actionId, event ->
+            if (event != null && event.keyCode === KeyEvent.KEYCODE_ENTER || actionId == EditorInfo.IME_ACTION_DONE) {
+                select.performClick()
+            }
+            false
+        })
     }
 
     fun createDBConnection(
@@ -120,19 +134,23 @@ class InquiryActivity : AppCompatActivity() {
                                     "supermarket_name"
                                 ) else "-"
                                 val price = it.getLong("price")
+
+                                val formatter: DecimalFormat =
+                                    NumberFormat.getInstance(Locale.US) as DecimalFormat
+                                formatter.applyPattern("#,###,###,###")
+                                val formattedStringPrice: String = formatter.format(price)
+
                                 val timestamp_s = if (it.getTimestamp("created_at") != null) it.getTimestamp(
                                     "created_at"
                                 ) else "-"
-
                                 r += "Barcode Product : ${id}" +
                                         "\nNamaProduct : ${name}" +
                                         "\nSupermarket : ${supermarket}" +
-                                        "\nHarga : Rp. ${price}" +
+                                        "\nHarga : Rp. ${formattedStringPrice}" +
                                         "\nTanggal Input : ${timestamp_s}\n\n"
                                 productName = name
                             }
-                            runOnUiThread { result2.text = r
-                            item_id.setText("")}
+                            runOnUiThread { result2.text = r }
                         }
                     }
                 }
@@ -192,5 +210,10 @@ class InquiryActivity : AppCompatActivity() {
             putExtra("DATABASE", database.toString())
         }
         startActivity(intent)
+    }
+
+
+    fun item_idOnClick(view: View) {
+        item_id.setText("")
     }
 }
