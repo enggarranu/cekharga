@@ -2,20 +2,15 @@ package com.ranumedia.cekharga
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
-import android.widget.EditText
+import android.widget.*
 import android.widget.TextView.OnEditorActionListener
-import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_inquiry.*
-import kotlinx.android.synthetic.main.activity_inquiry.item_id
-import kotlinx.android.synthetic.main.activity_update.*
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
@@ -32,23 +27,43 @@ class InquiryActivity : AppCompatActivity() {
     var port: String = ""
     var host: String = ""
     var database: String = ""
-    var supermarket: String = ""
     var i_id: String = ""
     var productName: String = ""
     var connection: Connection? = null
+    var supermarket: String = ""
+    lateinit var option: Spinner
+    var supermarket_array: Array<String> = emptyArray()
 
-    @RequiresApi(Build.VERSION_CODES.M)
+
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_inquiry)
+        option = findViewById(R.id.spinner) as Spinner
 
         username = intent.getStringExtra("USERNAME")
         password = intent.getStringExtra("PASSWORD")
         port = intent.getStringExtra("PORT")
         host = intent.getStringExtra("HOST")
         database = intent.getStringExtra("DATABASE")
-        supermarket = intent.getStringExtra("SUPERMARKET")
+        supermarket_array = intent.getStringArrayExtra("SUPERMARKET_ARRAY")
         connection = createDBConnection(username, password, port, host, database)
+
+
+        option.adapter =
+            ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, supermarket_array)
+
+        option.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
+                supermarket = supermarket_array.get(p2)
+            }
+
+            override fun onNothingSelected(p0: AdapterView<*>?) {
+                TODO("Not yet implemented")
+            }
+
+        }
 
         val inputBarcode: EditText = findViewById(R.id.item_id)
         inputBarcode.requestFocus()
@@ -84,6 +99,7 @@ class InquiryActivity : AppCompatActivity() {
         return connection
     }
 
+
     fun onClickSelect(v: View) {
 
         if (item_id.text == null || item_id.text.length == 0) {
@@ -116,7 +132,10 @@ class InquiryActivity : AppCompatActivity() {
                             }
                             val intent = Intent(this, UpdateActivity::class.java).apply {
                                 putExtra("PRODUCT_ID", i_id)
-                                putExtra("SUPERMARKET", supermarket)
+                                putExtra(
+                                    "SUPERMARKET",
+                                    spinner.selectedItem.toString().toLowerCase()
+                                )
                                 putExtra("PASSWORD", password.toString())
                                 putExtra("USERNAME", username.toString())
                                 putExtra("PORT", port.toString())
@@ -198,11 +217,11 @@ class InquiryActivity : AppCompatActivity() {
         }
     }
 
-    fun onClickUpdateProduct(v: View){
+    fun onClickUpdateProduct(v: View) {
         val intent = Intent(this, UpdateActivity::class.java).apply {
             putExtra("PRODUCT_ID", i_id)
             putExtra("PRODUCT_NAME", productName)
-            putExtra("SUPERMARKET", supermarket)
+            putExtra("SUPERMARKET", spinner.selectedItem.toString().toLowerCase())
             putExtra("PASSWORD", password.toString())
             putExtra("USERNAME", username.toString())
             putExtra("PORT", port.toString())

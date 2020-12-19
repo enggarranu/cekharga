@@ -7,36 +7,57 @@
     tools:context=".InquiryActivity"
     tools:ignore="ExtraText">
 
-    <EditText
-        android:id="@+id/item_id"
+    <TextView
+        android:id="@+id/store"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="16dp"
+        android:ems="10"
+        android:hint="Pilih Store :"
+        android:importantForAutofill="no"
+        app:layout_constraintEnd_toStartOf="@+id/guideline"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Spinner
+        android:id="@+id/spinner"
+        android:layout_width="380dp"
+        android:layout_height="26dp"
+        android:layout_marginTop="12dp"
+        android:importantForAutofill="yes"
+        app:layout_constraintEnd_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toBottomOf="@+id/store" />
+
+    <EditText
+        android:id="@+id/item_id"
+        android:layout_width="244dp"
+        android:layout_height="45dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="12dp"
         android:layout_marginEnd="8dp"
         android:ems="10"
         android:hint="Input Barcode Product"
-        android:onClick="item_idOnClick"
+        android:importantForAutofill="yes"
         android:inputType="number"
+        android:onClick="item_idOnClick"
         app:layout_constraintEnd_toStartOf="@+id/guideline"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:importantForAutofill="yes" />
+        app:layout_constraintTop_toBottomOf="@+id/spinner" />
 
     <Button
         android:id="@+id/barcode"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="16dp"
         android:ems="7"
-        android:text="barcode scan"
         android:onClick="onClickBarcode"
+        android:text="barcode scan"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@+id/guideline"
-        app:layout_constraintTop_toTopOf="parent" />
-
+        app:layout_constraintTop_toBottomOf="@+id/spinner" />
 
     <TextView
         android:id="@+id/result2"
@@ -69,7 +90,5 @@
         android:text="Update Product"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/select" />
-
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

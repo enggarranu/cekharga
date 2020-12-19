@@ -26,17 +26,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-//         Create an ArrayAdapter
-        val adapter = ArrayAdapter.createFromResource(
-            this,
-            R.array.city_list, android.R.layout.simple_spinner_item
-        )
-
-        // Specify the layout to use when the list of choices appears
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        // Apply the adapter to the spinner
-        spinner.adapter = adapter
     }
 
 //    override fun onPause() {
@@ -46,35 +35,6 @@ class MainActivity : AppCompatActivity() {
 //            connection?.close()
 //        }
 //    }
-
-    fun getSupermarket(): ArrayList<String> {
-        var supermarket_names: ArrayList<String> = ArrayList()
-        if (connection == null || connection?.isClosed == true) {
-            Toast.makeText(this, "Connection closed Get Supermarket", Toast.LENGTH_LONG)
-                .show()
-        }
-        thread {
-            try {
-                println("cccccccccccccccccccccccccccccccccccccccc" + connection)
-                connection!!.createStatement().use { s ->
-                    s.executeQuery("SELECT name FROM supermarket").use {
-
-                        while (it.next()) {
-                            val supermarket_name = it.getString("name")
-                            supermarket_names.add(supermarket_name)
-                        }
-                    }
-                }
-            } catch (e: SQLException) {
-                runOnUiThread {
-                    Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show()
-                }
-
-                Log.e(this::class.toString(), e.message, e)
-            }
-        }
-        return supermarket_names
-    }
 
     fun getDBConnection() {
         connection = null
@@ -103,7 +63,8 @@ class MainActivity : AppCompatActivity() {
                 Log.e(this::class.toString(), e.message, e)
             } catch (e: SQLException) {
                 runOnUiThread {
-                    Toast.makeText(this, "Failed to Connecttttttttttttttttt", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Failed to Connecttttttttttttttttt", Toast.LENGTH_LONG)
+                        .show()
                 }
 
                 Log.e(this::class.toString(), e.message, e)
@@ -119,11 +80,45 @@ class MainActivity : AppCompatActivity() {
 
     fun onClickConnect(v: View) {
         getDBConnection()
+        var supermarket_array: Array<String> = emptyArray()
         try {
             Thread.sleep(1000)
             if (connection == null || connection?.isClosed == true) {
-                Toast.makeText(this, "Failed To Connect on if get Connection", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed To Connect on if get Connection", Toast.LENGTH_SHORT)
+                    .show()
                 return
+            }
+            thread {
+                val listSupermarketNames = arrayListOf<String>()
+                try {
+                    println("cccccccccccccccccccccccccccccccccccccccc" + connection)
+                    connection!!.createStatement().use { s ->
+                        s.executeQuery("SELECT name FROM supermarket order by 1").use {
+                            while (it.next()) {
+                                val supermarket_name = it.getString("name")
+                                listSupermarketNames.add(supermarket_name)
+                            }
+                        }
+                    }
+
+                } catch (e: SQLException) {
+                    runOnUiThread {
+                        Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show()
+                    }
+
+                    Log.e(this::class.toString(), e.message, e)
+                }
+                supermarket_array = listSupermarketNames.toTypedArray()
+            }
+            Thread.sleep(500)
+            if (supermarket_array.isNotEmpty()) {
+                supermarket_array.forEach { println(it) }
+            } else {
+                println("supermarket_array empty :")
+                supermarket_array.forEach { println(it) }
+                Thread.sleep(1000)
+                println("sleep 1000ms and reprint array")
+                supermarket_array.forEach { println(it) }
             }
 
             runOnUiThread {
@@ -136,14 +131,13 @@ class MainActivity : AppCompatActivity() {
                 putExtra("PORT", p.toString())
                 putExtra("HOST", h.toString())
                 putExtra("DATABASE", d.toString())
-                putExtra("SUPERMARKET", spinner.selectedItem.toString().toLowerCase())
+                putExtra("SUPERMARKET_ARRAY", supermarket_array)
             }
             startActivity(intent)
-
-
         } catch (e: SQLException) {
             runOnUiThread {
-                Toast.makeText(this, "Failed to Connect on GetConnection", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed to Connect on GetConnection", Toast.LENGTH_SHORT)
+                    .show()
             }
 
             Log.e(this::class.toString(), e.message, e)
@@ -155,68 +149,4 @@ class MainActivity : AppCompatActivity() {
             Log.e(this::class.toString(), e.message, e)
         }
     }
-
-//    fun onClickCreate(v: View) {
-//        if (connection == null || connection?.isClosed == true) {
-//            Toast.makeText(this, "Connection closed", Toast.LENGTH_LONG).show()
-//            return
-//        }
-//
-//        thread {
-//            try {
-//                connection!!.createStatement().use {
-//                    it.execute("CREATE TABLE IF NOT EXISTS fruits (id SERIAL, name VARCHAR(30))")
-//                    it.execute("INSERT INTO fruits (name) VALUES ('apple'), ('orange'), ('grape')")
-//                }
-//
-//                runOnUiThread {
-//                    Toast.makeText(this, "Created", Toast.LENGTH_LONG).show()
-//                }
-//            } catch (e: SQLException) {
-//                runOnUiThread {
-//                    Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show()
-//                }
-//
-//                Log.e(this::class.toString(), e.message, e)
-//            } catch (e: SQLTimeoutException) {
-//                runOnUiThread {
-//                    Toast.makeText(this, "Timeout", Toast.LENGTH_LONG).show()
-//                }
-//
-//                Log.e(this::class.toString(), e.message, e)
-//            }
-//        }
-//    }
-
-//    fun onClickSelect(v: View) {
-//        if (connection == null || connection?.isClosed == true) {
-//            Toast.makeText(this, "Connection closed", Toast.LENGTH_LONG).show()
-//            return
-//        }
-//
-//        thread {
-//            try {
-//                connection!!.createStatement().use { s ->
-//                    s.executeQuery("SELECT * FROM fruits").use {
-//                        var r = ""
-//
-//                        while (it.next()) {
-//                            val id = it.getInt("id")
-//                            val name = it.getString("name")
-//
-//                            r += "${id}: ${name}\n"
-//                        }
-//
-//                        runOnUiThread { result.text = r }
-//                    }
-//                }
-//            } catch (e: SQLException) {
-//                runOnUiThread {
-//                    Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show()
-//                }
-//
-//                Log.e(this::class.toString(), e.message, e)
-//            }
-//        }
-//    }
 }
