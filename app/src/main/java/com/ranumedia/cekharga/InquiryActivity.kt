@@ -10,6 +10,12 @@ import android.view.inputmethod.EditorInfo
 import android.widget.*
 import android.widget.TextView.OnEditorActionListener
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.android.synthetic.main.activity_inquiry.*
 import java.sql.Connection
 import java.sql.DriverManager
@@ -22,6 +28,8 @@ import kotlin.concurrent.thread
 
 class InquiryActivity : AppCompatActivity() {
 
+    val db = Firebase.firestore
+
     var username: String = ""
     var password: String = ""
     var port: String = ""
@@ -30,40 +38,28 @@ class InquiryActivity : AppCompatActivity() {
     var i_id: String = ""
     var productName: String = ""
     var connection: Connection? = null
-    var supermarket: String = ""
-    lateinit var option: Spinner
-    var supermarket_array: Array<String> = emptyArray()
-
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_inquiry)
-        option = findViewById(R.id.spinner) as Spinner
 
-        username = intent.getStringExtra("USERNAME")
-        password = intent.getStringExtra("PASSWORD")
-        port = intent.getStringExtra("PORT")
-        host = intent.getStringExtra("HOST")
-        database = intent.getStringExtra("DATABASE")
-        supermarket_array = intent.getStringArrayExtra("SUPERMARKET_ARRAY")
-        connection = createDBConnection(username, password, port, host, database)
-
-
-        option.adapter =
-            ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, supermarket_array)
-
-        option.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
-                supermarket = supermarket_array.get(p2)
+        val rootRef = FirebaseFirestore.getInstance()
+        val subjectsRef = rootRef.collection("supermarket")
+        val spinner = findViewById<View>(R.id.spinner) as Spinner
+        val subjects: MutableList<String?> = ArrayList()
+        val adapter =
+            ArrayAdapter(applicationContext, android.R.layout.simple_spinner_item, subjects)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = adapter
+        subjectsRef.get().addOnCompleteListener(OnCompleteListener<QuerySnapshot> { task ->
+            if (task.isSuccessful) {
+                for (document in task.result!!) {
+                    val subject = document.getString("name")
+                    subjects.add(subject)
+                }
+                adapter.notifyDataSetChanged()
             }
-
-            override fun onNothingSelected(p0: AdapterView<*>?) {
-                TODO("Not yet implemented")
-            }
-
-        }
+        })
 
         val inputBarcode: EditText = findViewById(R.id.item_id)
         inputBarcode.requestFocus()
@@ -76,112 +72,124 @@ class InquiryActivity : AppCompatActivity() {
         })
     }
 
-    fun createDBConnection(
-        username: String,
-        password: String,
-        port: String,
-        host: String,
-        database: String
-    ): Connection? {
-        thread {
-            try {
-                connection = DriverManager.getConnection(
-                    "jdbc:postgresql://${host}:${port}/${database}",
-                    username.toString(),
-                    password.toString()
-                )
-            } catch (e: SQLException) {
-                runOnUiThread {
-                    Toast.makeText(this, "Failed to Connect", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-        return connection
-    }
-
-
     fun onClickSelect(v: View) {
-
         if (item_id.text == null || item_id.text.length == 0) {
             Toast.makeText(this, "Mohon Masukkan ID atau Barcode Product", Toast.LENGTH_LONG).show()
             item_id.setError("mohon masukkan product id")
             return
         }
 
-        if (connection == null || connection?.isClosed == true) {
-            Toast.makeText(this, "Connection closed, Please try again", Toast.LENGTH_LONG).show()
-            return
-        }
+        val docRef = db.collection("items").document(item_id.text.toString())
+        // Source can be CACHE, SERVER, or DEFAULT.
+        val source = Source.DEFAULT
 
-        thread {
-            try {
-                i_id = item_id.text.toString()
-//                var queryString : String = "SELECT * FROM fruits where id =" + i_id
-                var queryString =
-                    "select items.id,  items.name, supermarket.name as supermarket_name,  price.price, price.created_at " +
-                            "from items left join price on items.id = price.item_id " +
-                            "left join supermarket on price.supermarket_id = supermarket.id " +
-                            "where items.id = ${i_id} order by price.created_at desc limit 7;"
-                connection!!.createStatement().use { s ->
-                    s.executeQuery(queryString).use {
-                        var r = ""
-                        if (!it.isBeforeFirst()) {
-                            runOnUiThread {
-                                Toast.makeText(this, "Produk tidak ditemukan!", Toast.LENGTH_LONG)
-                                    .show()
-                            }
-                            val intent = Intent(this, UpdateActivity::class.java).apply {
-                                putExtra("PRODUCT_ID", i_id)
-                                putExtra(
-                                    "SUPERMARKET",
-                                    spinner.selectedItem.toString().toLowerCase()
-                                )
-                                putExtra("PASSWORD", password.toString())
-                                putExtra("USERNAME", username.toString())
-                                putExtra("PORT", port.toString())
-                                putExtra("HOST", host.toString())
-                                putExtra("DATABASE", database.toString())
-                                putExtra("PRODUCT_NAME", "")
-                            }
-                            runOnUiThread {result2.text = ""}
-                            startActivity(intent)
-                        } else {
-                            while (it.next()) {
-                                val id = it.getLong("id")
-                                val name = it.getString("name")
-                                val supermarket = if (it.getString("supermarket_name") != null) it.getString(
-                                    "supermarket_name"
-                                ) else "-"
-                                val price = it.getLong("price")
-
-                                val formatter: DecimalFormat =
-                                    NumberFormat.getInstance(Locale.US) as DecimalFormat
-                                formatter.applyPattern("#,###,###,###")
-                                val formattedStringPrice: String = formatter.format(price)
-
-                                val timestamp_s = if (it.getTimestamp("created_at") != null) it.getTimestamp(
-                                    "created_at"
-                                ) else "-"
-                                r += "Barcode Product : ${id}" +
-                                        "\nNamaProduct : ${name}" +
-                                        "\nSupermarket : ${supermarket}" +
-                                        "\nHarga : Rp. ${formattedStringPrice}" +
-                                        "\nTanggal Input : ${timestamp_s}\n\n"
-                                productName = name
-                            }
-                            runOnUiThread { result2.text = r }
-                        }
+        docRef.get(source).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                // Document found in the offline cache
+                val document = task.result
+                if (document != null) {
+                    var productname = document.data?.get("productname")
+                    if (productname != null) {
+                        println(productname)
+                        result2.text = productname.toString()
+                    } else {
+                        android.widget.Toast.makeText(
+                            this,
+                            "Produk tidak ditemukan!",
+                            android.widget.Toast.LENGTH_LONG
+                        )
+                            .show()
+                        result2.setText("")
                     }
                 }
-            } catch (e: SQLException) {
-                runOnUiThread {
-                    Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show()
-                }
-
-                Log.e(this::class.toString(), e.message, e)
+            } else {
+                Log.d(this::class.toString(), "Cached get failed: ", task.exception)
             }
         }
     }
+
+//    fun onClickSelect(v: View) {
+//
+//        if (item_id.text == null || item_id.text.length == 0) {
+//            Toast.makeText(this, "Mohon Masukkan ID atau Barcode Product", Toast.LENGTH_LONG).show()
+//            item_id.setError("mohon masukkan product id")
+//            return
+//        }
+//
+//        if (connection == null || connection?.isClosed == true) {
+//            Toast.makeText(this, "Connection closed, Please try again", Toast.LENGTH_LONG).show()
+//            return
+//        }
+//
+//        thread {
+//            try {
+//                i_id = item_id.text.toString()
+////                var queryString : String = "SELECT * FROM fruits where id =" + i_id
+//                var queryString =
+//                    "select items.id,  items.name, supermarket.name as supermarket_name,  price.price, price.created_at " +
+//                            "from items left join price on items.id = price.item_id " +
+//                            "left join supermarket on price.supermarket_id = supermarket.id " +
+//                            "where items.id = ${i_id} order by price.created_at desc limit 7;"
+//                connection!!.createStatement().use { s ->
+//                    s.executeQuery(queryString).use {
+//                        var r = ""
+//                        if (!it.isBeforeFirst()) {
+//                            runOnUiThread {
+//                                Toast.makeText(this, "Produk tidak ditemukan!", Toast.LENGTH_LONG)
+//                                    .show()
+//                            }
+//                            val intent = Intent(this, UpdateActivity::class.java).apply {
+//                                putExtra("PRODUCT_ID", i_id)
+//                                putExtra(
+//                                    "SUPERMARKET",
+//                                    spinner.selectedItem.toString().toLowerCase()
+//                                )
+//                                putExtra("PASSWORD", password.toString())
+//                                putExtra("USERNAME", username.toString())
+//                                putExtra("PORT", port.toString())
+//                                putExtra("HOST", host.toString())
+//                                putExtra("DATABASE", database.toString())
+//                                putExtra("PRODUCT_NAME", "")
+//                            }
+//                            runOnUiThread {result2.text = ""}
+//                            startActivity(intent)
+//                        } else {
+//                            while (it.next()) {
+//                                val id = it.getLong("id")
+//                                val name = it.getString("name")
+//                                val supermarket = if (it.getString("supermarket_name") != null) it.getString(
+//                                    "supermarket_name"
+//                                ) else "-"
+//                                val price = it.getLong("price")
+//
+//                                val formatter: DecimalFormat =
+//                                    NumberFormat.getInstance(Locale.US) as DecimalFormat
+//                                formatter.applyPattern("#,###,###,###")
+//                                val formattedStringPrice: String = formatter.format(price)
+//
+//                                val timestamp_s = if (it.getTimestamp("created_at") != null) it.getTimestamp(
+//                                    "created_at"
+//                                ) else "-"
+//                                r += "Barcode Product : ${id}" +
+//                                        "\nNamaProduct : ${name}" +
+//                                        "\nSupermarket : ${supermarket}" +
+//                                        "\nHarga : Rp. ${formattedStringPrice}" +
+//                                        "\nTanggal Input : ${timestamp_s}\n\n"
+//                                productName = name
+//                            }
+//                            runOnUiThread { result2.text = r }
+//                        }
+//                    }
+//                }
+//            } catch (e: SQLException) {
+//                runOnUiThread {
+//                    Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show()
+//                }
+//
+//                Log.e(this::class.toString(), e.message, e)
+//            }
+//        }
+//    }
 
     fun onClickBarcode(v: View) {
         item_id.setText("")

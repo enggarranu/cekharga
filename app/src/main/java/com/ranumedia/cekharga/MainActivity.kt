@@ -7,8 +7,17 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.firestore.EventListener
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import kotlinx.android.synthetic.main.activity_inquiry.*
 import kotlinx.android.synthetic.main.activity_main.*
 import org.postgresql.util.PSQLException
+import java.math.BigInteger
+import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
@@ -16,137 +25,58 @@ import java.sql.SQLTimeoutException
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
-    var connection: Connection? = null
-    val p = "5432"
-    val h = "34.101.83.253"
-    val d = "cekharga-db"
-    var pass = ""
-    var user = ""
+    val db = Firebase.firestore
+    var username: String = ""
+    var password: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
     }
 
-//    override fun onPause() {
-//        super.onPause()
-//
-//        if (connection?.isClosed == false) {
-//            connection?.close()
-//        }
-//    }
-
-    fun getDBConnection() {
-        connection = null
-        if (input_username.toString() == null || input_username.toString().length == 0) {
-            input_username.setError("input username")
-            return
-        }
-        thread {
-            try {
-                user = input_username.text.toString()
-                pass = input_password.text.toString()
-
-                this.connection = DriverManager.getConnection(
-                    "jdbc:postgresql://${h}:${p}/${d}",
-                    user.toString(),
-                    pass.toString()
-                )
-
-                runOnUiThread {
-                    Toast.makeText(this, "Connected on getConnection", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: PSQLException) {
-                runOnUiThread {
-                    Toast.makeText(this, "Worng Username / Password", Toast.LENGTH_LONG).show()
-                }
-                Log.e(this::class.toString(), e.message, e)
-            } catch (e: SQLException) {
-                runOnUiThread {
-                    Toast.makeText(this, "Failed to Connecttttttttttttttttt", Toast.LENGTH_LONG)
-                        .show()
-                }
-
-                Log.e(this::class.toString(), e.message, e)
-            } catch (e: SQLTimeoutException) {
-                runOnUiThread {
-                    Toast.makeText(this, "Connection timeout", Toast.LENGTH_LONG).show()
-                }
-
-                Log.e(this::class.toString(), e.message, e)
-            }
-        }
+    fun md5(input:String): String {
+        val md = MessageDigest.getInstance("MD5")
+        return BigInteger(1, md.digest(input.toByteArray())).toString(16).padStart(32, '0')
     }
 
     fun onClickConnect(v: View) {
-        getDBConnection()
-        var supermarket_array: Array<String> = emptyArray()
-        try {
-            Thread.sleep(1000)
-            if (connection == null || connection?.isClosed == true) {
-                Toast.makeText(this, "Failed To Connect on if get Connection", Toast.LENGTH_SHORT)
-                    .show()
-                return
-            }
-            thread {
-                val listSupermarketNames = arrayListOf<String>()
-                try {
-                    println("cccccccccccccccccccccccccccccccccccccccc" + connection)
-                    connection!!.createStatement().use { s ->
-                        s.executeQuery("SELECT name FROM supermarket order by 1").use {
-                            while (it.next()) {
-                                val supermarket_name = it.getString("name")
-                                listSupermarketNames.add(supermarket_name)
-                            }
-                        }
-                    }
 
-                } catch (e: SQLException) {
-                    runOnUiThread {
-                        Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show()
-                    }
+        username = input_username.text.toString()
+        password = input_password.text.toString()
 
-                    Log.e(this::class.toString(), e.message, e)
+        if (username == null || username.length == 0) {
+            Toast.makeText(this, "Username cannot be blank", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        if (password == null || password.length == 0) {
+            Toast.makeText(this, "Password cannot be blank", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val docRef = db.collection("users").document(username)
+        // Source can be CACHE, SERVER, or DEFAULT.
+        val source = Source.DEFAULT
+
+        docRef.get(source).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                // Document found in the offline cache
+                val document = task.result
+                if (document != null) {
+                    var password_db = document.data?.get("password")
+                    if (md5(password) == password_db) {
+                        println("berhasil login")
+                        Toast.makeText(this, "Login Success!", Toast.LENGTH_LONG).show()
+                        val intent = Intent(this, InquiryActivity::class.java).apply {}
+                        startActivity(intent)
+                    }
+                    else {
+                        Toast.makeText(this, "Worng Username and Password!", Toast.LENGTH_LONG).show()
+                    }
                 }
-                supermarket_array = listSupermarketNames.toTypedArray()
-            }
-            Thread.sleep(500)
-            if (supermarket_array.isNotEmpty()) {
-                supermarket_array.forEach { println(it) }
             } else {
-                println("supermarket_array empty :")
-                supermarket_array.forEach { println(it) }
-                Thread.sleep(1000)
-                println("sleep 1000ms and reprint array")
-                supermarket_array.forEach { println(it) }
+                Log.d(this::class.toString(), "Cached get failed: ", task.exception)
             }
-
-            runOnUiThread {
-                Toast.makeText(this, "Connected onClickConnect", Toast.LENGTH_LONG).show()
-            }
-
-            val intent = Intent(this, InquiryActivity::class.java).apply {
-                putExtra("PASSWORD", pass.toString())
-                putExtra("USERNAME", user.toString())
-                putExtra("PORT", p.toString())
-                putExtra("HOST", h.toString())
-                putExtra("DATABASE", d.toString())
-                putExtra("SUPERMARKET_ARRAY", supermarket_array)
-            }
-            startActivity(intent)
-        } catch (e: SQLException) {
-            runOnUiThread {
-                Toast.makeText(this, "Failed to Connect on GetConnection", Toast.LENGTH_SHORT)
-                    .show()
-            }
-
-            Log.e(this::class.toString(), e.message, e)
-        } catch (e: SQLTimeoutException) {
-            runOnUiThread {
-                Toast.makeText(this, "Connection timeout", Toast.LENGTH_SHORT).show()
-            }
-
-            Log.e(this::class.toString(), e.message, e)
         }
     }
 }

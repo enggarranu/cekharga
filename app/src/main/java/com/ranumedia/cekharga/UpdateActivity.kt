@@ -34,16 +34,6 @@ class UpdateActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_update)
 
-        product_id = intent.getStringExtra("PRODUCT_ID")
-        supermarket = intent.getStringExtra("SUPERMARKET").toLowerCase()
-        username = intent.getStringExtra("USERNAME")
-        password = intent.getStringExtra("PASSWORD")
-        port = intent.getStringExtra("PORT")
-        host = intent.getStringExtra("HOST")
-        database = intent.getStringExtra("DATABASE")
-        productName = intent.getStringExtra("PRODUCT_NAME")
-        connection = createDBConnection(username, password, port, host, database)
-
         item_id.setText(product_id)
         supermarket_txt.text = supermarket
         ProductName.setText(productName)
